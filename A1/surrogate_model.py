@@ -16,16 +16,24 @@ class SurrogateModel:
     def __init__(self, config_space):
         self.config_space = config_space
         self.df = None
-        self.model = Pipeline([('encoder',OneHotEncoder()),('imputer', SimpleImputer(missing_values=np.nan, strategy='mean')), ('model', RandomForestRegressor())])  
+        self.model = Pipeline([('encoder',OneHotEncoder(drop='first',sparse_output=False,handle_unknown='ignore')),
+                               ('imputer', SimpleImputer(missing_values=np.nan, strategy='mean')), 
+                               ('model', RandomForestRegressor())])  
+        self.best = {'model__bootstrap': False, 
+                     'model__criterion': 'poisson', 
+                     'model__max_depth': 20, 
+                     'model__max_features': 0.41211383990280637, 
+                     'model__min_samples_leaf': 2, 
+                     'model__min_samples_split': 9}
     
-    def fit(self, df):
+    def hp_search(self,df):
         """
         Receives a data frame, in which each column (except for the last two) represents a hyperparameter, the
         penultimate column represents the anchor size, and the final column represents the performance.
 
         :param df: the dataframe with performances
         :return: Does not return anything, but stores the trained model in self.model
-        """
+        """        
         self.df = df 
         features = df.columns[:-1]
         label = df.columns[-1]
@@ -51,13 +59,28 @@ class SurrogateModel:
         cv=5,               # 5-fold cross-validation
         verbose=1
         )
-
         opt.fit(X_train,y_train)
         y_pred = opt.predict(X_test)
+        self.best = opt.best_params_
         print("Best Score:", opt.best_score_)
         print(f'R2: {r2_score(y_test,y_pred)},mse: {mean_squared_error(y_test,y_pred)}')
         print("Best params:")
         print(opt.best_params_)
+
+
+    def fit(self, df):
+        """
+        Receives a data frame, in which each column (except for the last two) represents a hyperparameter, the
+        penultimate column represents the anchor size, and the final column represents the performance.
+
+        :param df: the dataframe with performances
+        :return: Does not return anything, but stores the trained model in self.model
+        """
+        self.df = df
+        self.features = df.columns[:-1]
+        self.label = df.columns[-1]
+        self.model = self.model.set_params(**self.best)
+        self.model.fit(df[self.features],df[self.label])
 
     def predict(self, theta_new):
         """
@@ -66,11 +89,10 @@ class SurrogateModel:
         :param theta_new: a dict, where each key represents the hyperparameter (or anchor)
         :return: float, the predicted performance of theta new (which can be considered the ground truth)
         """
-        return self.model.predict(theta_new)
-
+        return self.model.predict(theta_new)[0]
 
 
 if __name__ == '__main__':
     data = pd.read_csv('lcdb_configs.csv')
     sm = SurrogateModel(None)
-    sm.fit(data)
+    sm.hp_search(data)

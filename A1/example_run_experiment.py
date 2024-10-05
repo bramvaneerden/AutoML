@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from random_search import RandomSearch
 from surrogate_model import SurrogateModel
-
+import numpy as np
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -29,16 +29,20 @@ def run(args):
 
     for idx in range(args.num_iterations):
         theta_new = dict(random_search.select_configuration())
+        X = pd.DataFrame(theta_new, index=[0])
+        for col in surrogate_model.features:
+            if col not in X.columns:
+                X[col] = None
         theta_new['anchor_size'] = args.max_anchor_size
-        performance = surrogate_model.predict(theta_new)
+        performance = surrogate_model.predict(X[surrogate_model.features])
         # ensure to only record improvements
         results['random_search'].append(min(results['random_search'][-1], performance))
         random_search.update_runs((theta_new, performance))
 
+
     plt.plot(range(len(results['random_search'])), results['random_search'])
     plt.yscale('log')
     plt.show()
-
 
 if __name__ == '__main__':
     run(parse_args())

@@ -1,9 +1,12 @@
 import ConfigSpace
 import numpy as np
 import typing
-
+from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.pipeline import Pipeline
-
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import OneHotEncoder
+import pandas as pd
+from scipy.stats import norm
 
 class SequentialModelBasedOptimization(object):
 
@@ -13,7 +16,11 @@ class SequentialModelBasedOptimization(object):
         (theta_inc being the best found hyperparameters, theta_inc_performance being the performance
         associated with it)
         """
-        raise NotImplementedError()
+        self.R = []
+        self.theta_inc = {}
+        self.theta_inc_performance = 1
+        self.cs = config_space
+
 
     def initialize(self, capital_phi: typing.List[typing.Tuple[typing.Dict, float]]) -> None:
         """
@@ -23,15 +30,21 @@ class SequentialModelBasedOptimization(object):
         :param capital_phi: a list of tuples, each tuple being a configuration and the performance (typically,
         error rate)
         """
-        raise NotImplementedError()
+        self.capital_phi = capital_phi
+        self.gpr = Pipeline([('encoder',OneHotEncoder(drop='first',sparse_output=False,handle_unknown='ignore')),
+                        ('imputer', SimpleImputer(missing_values=np.nan, strategy='mean')), 
+                        ('model', GaussianProcessRegressor())])  
 
     def fit_model(self) -> None:
         """
         Fits the internal surrogate model on the complete run list.
         """
-        raise NotImplementedError()
+        X = pd.DataFrame([row for row,_ in self.R], index = [range(len(self.R))])
+        y = np.array([y for _,y in self.R])
+        self.gpr.fit(X,y)
 
-    def select_configuration(self) -> ConfigSpace.Configuration:
+
+    def select_configuration(self, configurations) -> ConfigSpace.Configuration:
         """
         Determines which configurations are good, based on the internal surrogate model.
         Note that we are minimizing the error, but the expected improvement takes into account that.
@@ -40,7 +53,9 @@ class SequentialModelBasedOptimization(object):
         :return: A size n vector, same size as each element representing the EI of a given
         configuration
         """
-        raise NotImplementedError()
+        theta = pd.DataFrame(configurations,index = [range(len(configurations))])
+        EI = self.expected_improvement(self.model,self.theta_inc_performance,theta)
+        return EI
 
     @staticmethod
     def expected_improvement(model_pipeline: Pipeline, f_star: float, theta: np.array) -> np.array:
@@ -55,8 +70,10 @@ class SequentialModelBasedOptimization(object):
         :return: A size n vector, same size as each element representing the EI of a given
         configuration
         """
-        raise NotImplementedError()
-
+        y_mu,y_std = model_pipeline.predict(theta,return_std=True)
+        EI = (-1*f_star * y_mu) * norm.cdf((-1 * f_star * y_mu)/y_std) + y_std * norm.pdf((-1*f_star*y_mu)/y_std)
+        return EI
+    
     def update_runs(self, run: typing.Tuple[typing.Dict, float]):
         """
         After a configuration has been selected and ran, it will be added to the run list
@@ -64,4 +81,5 @@ class SequentialModelBasedOptimization(object):
 
         :param run: A tuple (configuration, performance) where performance is error rate
         """
-        raise NotImplementedError()
+        self.R.append(run)
+

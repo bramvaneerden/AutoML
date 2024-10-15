@@ -89,7 +89,14 @@ class SurrogateModel:
         :param theta_new: a dict, where each key represents the hyperparameter (or anchor)
         :return: float, the predicted performance of theta new (which can be considered the ground truth)
         """
-        return self.model.predict(theta_new)[0]
+        if len(theta_new)>1:
+            X = pd.DataFrame(theta_new,index=[x for x in range(len(theta_new))])
+        else:
+            X = pd.DataFrame(theta_new)
+        for col in self.features:
+            if col not in X.columns:
+                X[col] = None
+        return self.model.predict(X[self.features])
 
 
 if __name__ == '__main__':

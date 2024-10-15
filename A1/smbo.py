@@ -20,9 +20,10 @@ class SequentialModelBasedOptimization(object):
         self.theta_inc = {}
         self.theta_inc_performance = 1
         self.cs = config_space
+        self.features = [param.name for param in list(config_space.values())]
 
 
-    def initialize(self, capital_phi: typing.List[typing.Tuple[typing.Dict, float]]) -> None:
+    def initialize(self, R: typing.List[typing.Tuple[typing.Dict, float]]) -> None:
         """
         Initializes the model with a set of initial configurations, before it can make recommendations
         which configurations are in good regions. Note that we are minimising (lower values are preferred)
@@ -30,7 +31,7 @@ class SequentialModelBasedOptimization(object):
         :param capital_phi: a list of tuples, each tuple being a configuration and the performance (typically,
         error rate)
         """
-        self.capital_phi = capital_phi
+        self.R = R
         self.gpr = Pipeline([('encoder',OneHotEncoder(drop='first',sparse_output=False,handle_unknown='ignore')),
                         ('imputer', SimpleImputer(missing_values=np.nan, strategy='mean')), 
                         ('model', GaussianProcessRegressor())])  
@@ -39,9 +40,19 @@ class SequentialModelBasedOptimization(object):
         """
         Fits the internal surrogate model on the complete run list.
         """
-        X = pd.DataFrame([row for row,_ in self.R], index = [range(len(self.R))])
-        y = np.array([y for _,y in self.R])
-        self.gpr.fit(X,y)
+        X = pd.DataFrame(columns=self.features)
+        y = []
+        for i,(x_row,y_row) in enumerate(self.R):
+            X =  pd.concat([X,pd.DataFrame([x_row],index=[i])])
+            y.append(y_row)
+        y = np.array(y)
+
+#        X = pd.DataFrame([row for row,_ in self.R], index = [x for x in range(len(self.R))])
+#        y = np.array([y for _,y in self.R])
+#        for col in self.features:
+#            if col not in X.columns:
+#                X[col] = None
+        self.gpr.fit(X[self.features],y)
 
 
     def select_configuration(self, configurations) -> ConfigSpace.Configuration:
@@ -53,8 +64,8 @@ class SequentialModelBasedOptimization(object):
         :return: A size n vector, same size as each element representing the EI of a given
         configuration
         """
-        theta = pd.DataFrame(configurations,index = [range(len(configurations))])
-        EI = self.expected_improvement(self.model,self.theta_inc_performance,theta)
+        theta = pd.DataFrame(configurations,index = [x for x in range(len(configurations))])
+        EI = self.expected_improvement(self.gpr,self.theta_inc_performance,theta[self.features])
         return EI
 
     @staticmethod

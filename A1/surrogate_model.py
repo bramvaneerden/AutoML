@@ -22,12 +22,16 @@ class SurrogateModel:
         self.model = Pipeline([('encoder',encoder),
                                ('imputer', SimpleImputer(missing_values=np.nan, strategy='mean')), 
                                ('model', RandomForestRegressor())])  
+        # data = pd.read_csv('lcdb_configs.csv')
+        # self.best = {}
+        # self.hp_search(data)
+        
         self.best = {'model__bootstrap': False, 
-                     'model__criterion': 'poisson', 
+                     'model__criterion': 'squared_error', 
                      'model__max_depth': 20, 
-                     'model__max_features': 0.41211383990280637, 
+                     'model__max_features': 0.6984621976195288, 
                      'model__min_samples_leaf': 2, 
-                     'model__min_samples_split': 9}
+                     'model__min_samples_split': 2}
     
     def hp_search(self,df):
         """
@@ -69,6 +73,7 @@ class SurrogateModel:
         print(f'R2: {r2_score(y_test,y_pred)},mse: {mean_squared_error(y_test,y_pred)}')
         print("Best params:")
         print(opt.best_params_)
+        
 
 
     def fit(self, df):
@@ -104,3 +109,9 @@ class SurrogateModel:
                 
         return self.model.predict(X[self.features])
 
+
+if __name__ == '__main__':
+    data = pd.read_csv('lcdb_configs.csv')
+    config_space = ConfigSpace.ConfigurationSpace.from_json('./lcdb_config_space_knn.json')
+    sm = SurrogateModel(config_space)
+    sm.hp_search(data)

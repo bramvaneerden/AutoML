@@ -56,7 +56,6 @@ class SequentialModelBasedOptimization(object):
         self.model.fit(X,y)
         
         
-        
 
     def select_configuration(self, idx) -> ConfigSpace.Configuration:
         """
@@ -68,11 +67,11 @@ class SequentialModelBasedOptimization(object):
         configuration
         """
         rs_probability = 0.3
-        if np.random.randint(0,1) < rs_probability:
+        if np.random.rand() < rs_probability:
             return self.config_space.sample_configuration(1)
         
         self.fit_model()
-        sample_configs = self.config_space.sample_configuration(3000)
+        sample_configs = self.config_space.sample_configuration(1000)
         df = pd.DataFrame(sample_configs)
         
         EI = self.expected_improvement(self.model, self.theta_inc_performance, df)
@@ -107,7 +106,6 @@ class SequentialModelBasedOptimization(object):
         EI = (f_star - mu) * cdf + sigma*(pdf)
         
         return EI
-        
 
     def update_runs(self, run: typing.Tuple[typing.Dict, float]):
         """
@@ -116,9 +114,10 @@ class SequentialModelBasedOptimization(object):
 
         :param run: A tuple (configuration, performance) where performance is error rate
         """
-        
+        # print(run)
         self.R.append(run)
         configuration, performance = run
         if performance < self.theta_inc_performance:
             self.theta_inc_performance = performance
             self.theta_inc = configuration
+

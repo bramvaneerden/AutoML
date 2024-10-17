@@ -14,7 +14,7 @@ def parse_args():
     parser.add_argument('--configurations_performance_file', type=str, default='lcdb_configs.csv')
     # max_anchor_size: connected to the configurations_performance_file. The max value upon which anchors are sampled
     parser.add_argument('--max_anchor_size', type=int, default=1600)
-    parser.add_argument('--num_iterations', type=int, default=500)
+    parser.add_argument('--num_iterations', type=int, default=400)
 
     return parser.parse_args()
 
@@ -40,9 +40,10 @@ def run(args):
     for idx in range(args.num_iterations):
         # print(f"\n Run no. {idx}\n")
         # smbo.fit_model()                      -> to smbo.py
-        theta_new = smbo.select_configuration(idx)
+        theta_new= smbo.select_configuration(idx)
         performance = surrogate_model.predict(theta_new)
         float_performance = performance[0]
+        print(f"PERFORMANCE: {float_performance}")
         smbo.update_runs((theta_new, float_performance))
         results['smbo'].append(smbo.theta_inc_performance)
 

@@ -30,7 +30,7 @@ def run(args):
         'smbo':[1.0]
     }
     # performances = []
-    thetas = config_space.sample_configuration(10)
+    thetas = config_space.sample_configuration(100)
 
     performances = surrogate_model.predict(thetas)
         
@@ -39,8 +39,8 @@ def run(args):
     smbo.initialize(capital_phi)
     for idx in range(args.num_iterations):
         # print(f"\n Run no. {idx}\n")
-        smbo.fit_model()
-        theta_new = smbo.select_configuration()
+        # smbo.fit_model()
+        theta_new = smbo.select_configuration(idx)
         performance = surrogate_model.predict(theta_new)
         float_performance = performance[0]
         smbo.update_runs((theta_new, float_performance))

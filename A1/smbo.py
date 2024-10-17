@@ -8,7 +8,7 @@ from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import OneHotEncoder
 from scipy.stats import norm
 import pandas as pd
-
+import matplotlib.pyplot as plt
 
 class SequentialModelBasedOptimization(object):
 
@@ -55,8 +55,9 @@ class SequentialModelBasedOptimization(object):
         self.model.fit(X,y)
         
         
+        
 
-    def select_configuration(self) -> ConfigSpace.Configuration:
+    def select_configuration(self, idx) -> ConfigSpace.Configuration:
         """
         Determines which configurations are good, based on the internal surrogate model.
         Note that we are minimizing the error, but the expected improvement takes into account that.
@@ -65,14 +66,19 @@ class SequentialModelBasedOptimization(object):
         :return: A size n vector, same size as each element representing the EI of a given
         configuration
         """
+        rs_probability = 0.3
+        if np.random.randint(0,1) < rs_probability:
+            return self.config_space.sample_configuration(1)
         
-        sample_configs = self.config_space.sample_configuration(1000)
+        self.fit_model()
+        sample_configs = self.config_space.sample_configuration(3000)
         df = pd.DataFrame(sample_configs)
         
         EI = self.expected_improvement(self.model, self.theta_inc_performance, df)
         best = np.argmax(EI)
-
         return sample_configs[best]
+        
+        
 
     @staticmethod
     def expected_improvement(model_pipeline: Pipeline, f_star: float, theta: np.array) -> np.array:
@@ -90,11 +96,13 @@ class SequentialModelBasedOptimization(object):
         
         mu, sigma = model_pipeline.predict(theta, return_std = True)
         
+        sigma = np.maximum(sigma, 1e-9)
+        
         z = (f_star - mu) / sigma
         
         cdf = norm.cdf(z)
         pdf = norm.pdf(z)
-        
+
         EI = (f_star - mu) * cdf + sigma*(pdf)
         
         return EI
@@ -107,7 +115,7 @@ class SequentialModelBasedOptimization(object):
 
         :param run: A tuple (configuration, performance) where performance is error rate
         """
-
+        
         self.R.append(run)
         configuration, performance = run
         if performance < self.theta_inc_performance:

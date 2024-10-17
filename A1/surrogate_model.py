@@ -11,13 +11,15 @@ import pandas as pd
 from skopt import BayesSearchCV
 from skopt.space import Real, Categorical, Integer
 import ConfigSpace
+from config_encoder import ConfigEncoder
 
 class SurrogateModel:
 
     def __init__(self, config_space):
         self.config_space = config_space
         self.df = None
-        self.model = Pipeline([('encoder',OneHotEncoder(drop='first',sparse_output=False,handle_unknown='ignore')),
+        encoder = ConfigEncoder(self.config_space)
+        self.model = Pipeline([('encoder',encoder),
                                ('imputer', SimpleImputer(missing_values=np.nan, strategy='mean')), 
                                ('model', RandomForestRegressor())])  
         self.best = {'model__bootstrap': False, 
@@ -94,6 +96,8 @@ class SurrogateModel:
             X = pd.DataFrame(theta_new,index=[x for x in range(len(theta_new))])
         elif isinstance(theta_new, ConfigSpace.Configuration):
             X = pd.DataFrame([theta_new.get_dictionary()])
+        else:
+            X = pd.DataFrame(theta_new)
         for col in self.features:
             if col not in X.columns:
                 X[col] = None

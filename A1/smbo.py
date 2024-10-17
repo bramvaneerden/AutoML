@@ -9,6 +9,7 @@ from sklearn.preprocessing import OneHotEncoder
 from scipy.stats import norm
 import pandas as pd
 import matplotlib.pyplot as plt
+from config_encoder import ConfigEncoder
 
 class SequentialModelBasedOptimization(object):
 
@@ -33,8 +34,8 @@ class SequentialModelBasedOptimization(object):
         """
         # print(capital_phi)
         self.R.extend(capital_phi)
-        
-        self.model = Pipeline([('encoder',OneHotEncoder(drop='first',sparse_output=False,handle_unknown='ignore')),
+        encoder = ConfigEncoder(self.config_space)
+        self.model = Pipeline([('encoder', encoder),
                                ('imputer', SimpleImputer(missing_values=np.nan, strategy='mean')), 
                                ('model', GaussianProcessRegressor())]) 
         

@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 from skopt import BayesSearchCV
 from skopt.space import Real, Categorical, Integer
+import ConfigSpace
 
 class SurrogateModel:
 
@@ -89,17 +90,13 @@ class SurrogateModel:
         :param theta_new: a dict, where each key represents the hyperparameter (or anchor)
         :return: float, the predicted performance of theta new (which can be considered the ground truth)
         """
-        if len(theta_new)>1:
+        if isinstance(theta_new, list): # len(theta_new)>1:
             X = pd.DataFrame(theta_new,index=[x for x in range(len(theta_new))])
-        else:
-            X = pd.DataFrame(theta_new)
+        elif isinstance(theta_new, ConfigSpace.Configuration):
+            X = pd.DataFrame([theta_new.get_dictionary()])
         for col in self.features:
             if col not in X.columns:
                 X[col] = None
+                
         return self.model.predict(X[self.features])
 
-
-if __name__ == '__main__':
-    data = pd.read_csv('lcdb_configs.csv')
-    sm = SurrogateModel(None)
-    sm.hp_search(data)

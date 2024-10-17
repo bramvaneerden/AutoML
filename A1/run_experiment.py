@@ -14,7 +14,6 @@ def parse_args():
     # max_anchor_size: connected to the configurations_performance_file. The max value upon which anchors are sampled
     parser.add_argument('--max_anchor_size', type=int, default=1600)
     parser.add_argument('--num_iterations', type=int, default=100)
-    parser.add_argument('--mode', type=str, default='all')
 
     return parser.parse_args()
 
@@ -30,22 +29,26 @@ def run(args):
         'random_search': [1.0],
         'smbo':[1.0]
     }
+    # performances = []
     thetas = config_space.sample_configuration(10)
-    
+
     performances = surrogate_model.predict(thetas)
-    R = [(theta,performance) for theta,performance in zip(thetas,performances)]
-    smbo.initialize(R)
-    for idx in range(args.num_iterations):
-        smbo.fit_model()
-        theta_new = smbo.select_configuration(config_space.sample_configuration(100))
-        performance = surrogate_model.predict(theta_new)
-        smbo.update_runs((theta_new,performance))
-        results['smbo'].append(smbo.theta_inc_performance)
+        
     
+    capital_phi = zip(thetas, performances)
+    smbo.initialize(capital_phi)
+    for idx in range(args.num_iterations):
+        # print(f"\n Run no. {idx}\n")
+        smbo.fit_model()
+        theta_new = smbo.select_configuration()
+        performance = surrogate_model.predict(theta_new)
+        float_performance = performance[0]
+        smbo.update_runs((theta_new, float_performance))
+        results['smbo'].append(smbo.theta_inc_performance)
+
     plt.plot(range(len(results['smbo'])), results['smbo'])
     plt.yscale('log')
     plt.show()
 
 if __name__ == '__main__':
     run(parse_args())
-

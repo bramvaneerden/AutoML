@@ -11,10 +11,10 @@ import numpy as np
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--config_space_file', type=str, default='lcdb_config_space_knn.json')
-    parser.add_argument('--configurations_performance_file', type=str, default='lcdb_configs.csv')
+    parser.add_argument('--configurations_performance_file', type=str, default='total_performances_dataset.csv')
     # max_anchor_size: connected to the configurations_performance_file. The max value upon which anchors are sampled
     parser.add_argument('--max_anchor_size', type=int, default=1600)
-    parser.add_argument('--num_iterations', type=int, default=40)
+    parser.add_argument('--num_iterations', type=int, default=100)
 
     return parser.parse_args()
 
@@ -23,18 +23,19 @@ def plot_optimization_comparison(results_smbo, results_random):
 
     plt.figure(figsize=(10, 6))
     
-    best_smbo = np.minimum.accumulate(results_smbo)
-    best_random = np.minimum.accumulate(results_random)
+    #best_smbo = np.minimum.accumulate(results_smbo)
+    #best_random = np.minimum.accumulate(results_random)
     
-    iterations = range(len(best_smbo))
-    plt.plot(iterations, best_smbo, 'b-', label='SMBO', linewidth=2)
-    plt.plot(iterations, best_random, 'r--', label='random search', linewidth=2)
+    iterations = range(len(results_smbo))
+    plt.plot(iterations, results_smbo, 'b-', label='SMBO', linewidth=2)
+    plt.plot(iterations, results_random, 'r--', label='random search', linewidth=2)
     
     plt.xlabel('iteration')
     plt.ylabel('best performance')
     plt.title('SMBO vs random search')
     plt.legend()
     plt.grid(True)
+    plt.savefig('comparison.png')
     plt.show()
     
 
@@ -58,6 +59,7 @@ def run(args):
     
     capital_phi = zip(thetas, performances)
     smbo.initialize(capital_phi)
+
     for idx in range(args.num_iterations):
         # smbo
         theta_smbo = smbo.select_configuration(idx)
@@ -68,7 +70,10 @@ def run(args):
         # random Search
         theta_random = random_search.select_configuration()
         perf_random = surrogate_model.predict(theta_random)[0]
-        results_random.append(perf_random)
+        if perf_random<np.min(results_random):
+            results_random.append(perf_random)
+        else:
+            results_random.append(results_random[-1])
     
     plot_optimization_comparison(results_smbo, results_random)
 

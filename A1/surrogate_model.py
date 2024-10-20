@@ -40,7 +40,7 @@ class SurrogateModel:
 
         :param df: the dataframe with performances
         :return: Does not return anything, but stores the trained model in self.model
-        """        
+        """ 
         self.df = df 
         features = df.columns[:-1]
         label = df.columns[-1]
@@ -50,9 +50,10 @@ class SurrogateModel:
         # Define random forest search space
         search_space  = {
                 'model__criterion': Categorical(['squared_error', 'absolute_error', 'friedman_mse', 'poisson']),
-                'model__max_depth': Integer(4,20),
-                'model__min_samples_split': Integer(2,20),
-                'model__min_samples_leaf': Integer(2,20),
+                'model__n_estimators': Integer(10,1000),
+                'model__max_depth': Integer(10,50),
+                'model__min_samples_split': Integer(2,30),
+                'model__min_samples_leaf': Integer(1,30),
                 'model__max_features':Real(0.1,1),
                 'model__bootstrap':Categorical([True,False]),
             }
@@ -64,6 +65,8 @@ class SurrogateModel:
         n_iter=32,              # Number of iterations
         scoring='r2',     # You can change this to other metrics if needed
         cv=5,               # 5-fold cross-validation
+        n_jobs = 15,
+        n_points=3,
         verbose=1
         )
         opt.fit(X_train,y_train)
@@ -87,7 +90,7 @@ class SurrogateModel:
         self.df = df
         self.features = df.columns[:-1]
         self.label = df.columns[-1]
-        self.model = self.model.set_params(**self.best)
+        #self.model = self.model.set_params(**self.best)
         self.model.fit(df[self.features],df[self.label])
 
     def predict(self, theta_new):
@@ -111,7 +114,10 @@ class SurrogateModel:
 
 
 if __name__ == '__main__':
-    data = pd.read_csv('lcdb_configs.csv')
+    files = ['lcdb_configs.csv','config_performances_dataset-6.csv','config_performances_dataset-11.csv','config_performances_dataset-1457.csv']
+    data = pd.DataFrame()
+    for file in files:
+        data = pd.concat([data,pd.read_csv(file)])
     config_space = ConfigSpace.ConfigurationSpace.from_json('./lcdb_config_space_knn.json')
     sm = SurrogateModel(config_space)
     sm.hp_search(data)

@@ -13,7 +13,7 @@ from config_encoder import ConfigEncoder
 
 class SequentialModelBasedOptimization(object):
 
-    def __init__(self, config_space):
+    def __init__(self, config_space, exploration = .2):
         """
         Initializes empty variables for the model, the list of runs (capital R), and the incumbent
         (theta_inc being the best found hyperparameters, theta_inc_performance being the performance
@@ -23,6 +23,7 @@ class SequentialModelBasedOptimization(object):
         self.R = []
         self.theta_inc = {}
         self.theta_inc_performance = 1
+        self.exploration = exploration
         
     def initialize(self, capital_phi: typing.List[typing.Tuple[typing.Dict, float]]) -> None:
         """
@@ -45,7 +46,6 @@ class SequentialModelBasedOptimization(object):
                 self.theta_inc_performance = performance
                 self.theta_inc = configuration.copy()
         
-        
     def fit_model(self) -> None:
         """
         Fits the internal surrogate model on the complete run list.
@@ -55,8 +55,6 @@ class SequentialModelBasedOptimization(object):
         y = np.array(results)
         self.model.fit(X,y)
         
-        
-
     def select_configuration(self, idx) -> ConfigSpace.Configuration:
         """
         Determines which configurations are good, based on the internal surrogate model.
@@ -66,8 +64,8 @@ class SequentialModelBasedOptimization(object):
         :return: A size n vector, same size as each element representing the EI of a given
         configuration
         """
-        rs_probability = 0.3
-        if np.random.rand() < rs_probability:
+
+        if np.random.rand() < self.exploration:
             return self.config_space.sample_configuration(1)
         
         self.fit_model()
@@ -77,8 +75,6 @@ class SequentialModelBasedOptimization(object):
         EI = self.expected_improvement(self.model, self.theta_inc_performance, df)
         best = np.argmax(EI)
         return sample_configs[best]
-        
-        
 
     @staticmethod
     def expected_improvement(model_pipeline: Pipeline, f_star: float, theta: np.array) -> np.array:
@@ -95,16 +91,11 @@ class SequentialModelBasedOptimization(object):
         """
         
         mu, sigma = model_pipeline.predict(theta, return_std = True)
-        
         sigma = np.maximum(sigma, 1e-9)
-        
         z = (f_star - mu) / sigma
-        
         cdf = norm.cdf(z)
         pdf = norm.pdf(z)
-
         EI = (f_star - mu) * cdf + sigma*(pdf)
-        
         return EI
 
     def update_runs(self, run: typing.Tuple[typing.Dict, float]):

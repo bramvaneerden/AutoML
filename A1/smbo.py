@@ -4,6 +4,8 @@ import typing
 
 from sklearn.pipeline import Pipeline
 from sklearn.gaussian_process import GaussianProcessRegressor
+from sklearn.gaussian_process.kernels import Matern
+
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import OneHotEncoder
 from scipy.stats import norm
@@ -13,7 +15,7 @@ from config_encoder import ConfigEncoder
 
 class SequentialModelBasedOptimization(object):
 
-    def __init__(self, config_space, exploration = .2):
+    def __init__(self, config_space,max_anchor_size=1600, exploration = .3):
         """
         Initializes empty variables for the model, the list of runs (capital R), and the incumbent
         (theta_inc being the best found hyperparameters, theta_inc_performance being the performance
@@ -22,8 +24,16 @@ class SequentialModelBasedOptimization(object):
         self.config_space = config_space
         self.R = []
         self.theta_inc = {}
-        self.theta_inc_performance = 1
+        self.theta_inc_performance = float('inf')
         self.exploration = exploration
+        self.max_anchor_size = max_anchor_size
+        self.encoder = ConfigEncoder(self.config_space)
+        
+        self.model = Pipeline([
+            ('model', GaussianProcessRegressor(kernel=Matern(), random_state=42
+
+            ))
+        ])
         
     def initialize(self, capital_phi: typing.List[typing.Tuple[typing.Dict, float]]) -> None:
         """
@@ -35,10 +45,10 @@ class SequentialModelBasedOptimization(object):
         """
         # print(capital_phi)
         self.R.extend(capital_phi)
-        encoder = ConfigEncoder(self.config_space)
-        self.model = Pipeline([('encoder', encoder),
-                               ('imputer', SimpleImputer(missing_values=np.nan, strategy='mean')), 
-                               ('model', GaussianProcessRegressor())]) 
+        
+        if len(capital_phi) > 0:
+            self.theta_inc = capital_phi[0][0].copy()
+            self.theta_inc_performance = capital_phi[0][1]
         
         
         for configuration, performance in capital_phi:
@@ -52,8 +62,9 @@ class SequentialModelBasedOptimization(object):
         """
         configs, results = zip(*self.R)
         X = pd.DataFrame(configs)
-        y = np.array(results)
-        self.model.fit(X,y)
+        X = self.encoder.transform(X) 
+        y = np.array(results, dtype=object)
+        self.model.fit(X, y)
         
     def select_configuration(self, idx) -> ConfigSpace.Configuration:
         """
@@ -64,15 +75,19 @@ class SequentialModelBasedOptimization(object):
         :return: A size n vector, same size as each element representing the EI of a given
         configuration
         """
-
+        # exploration decay
+        self.exploration = self.exploration * 0.95 ** idx
+        
         if np.random.rand() < self.exploration:
             return self.config_space.sample_configuration(1)
         
         self.fit_model()
-        sample_configs = self.config_space.sample_configuration(1000)
+        sample_configs = self.config_space.sample_configuration(10000)
         df = pd.DataFrame(sample_configs)
+        df['anchor_size'] = self.max_anchor_size
+        df_encoded = self.encoder.transform(df) 
         
-        EI = self.expected_improvement(self.model, self.theta_inc_performance, df)
+        EI = self.expected_improvement(self.model, self.theta_inc_performance, df_encoded)
         best = np.argmax(EI)
         return sample_configs[best]
 

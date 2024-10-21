@@ -18,20 +18,21 @@ class SurrogateModel:
     def __init__(self, config_space):
         self.config_space = config_space
         self.df = None
-        encoder = ConfigEncoder(self.config_space)
-        self.model = Pipeline([('encoder',encoder),
-                               ('imputer', SimpleImputer(missing_values=np.nan, strategy='mean')), 
+        self.encoder = ConfigEncoder(self.config_space)
+        self.model = Pipeline([
+            # ('encoder',self.encoder),
+                            #    ('imputer', SimpleImputer(missing_values=np.nan, strategy='mean')), 
                                ('model', RandomForestRegressor())])  
         # data = pd.read_csv('lcdb_configs.csv')
         # self.best = {}
         # self.hp_search(data)
         
-        self.best = {'model__bootstrap': False, 
-                     'model__criterion': 'squared_error', 
-                     'model__max_depth': 20, 
-                     'model__max_features': 0.6984621976195288, 
-                     'model__min_samples_leaf': 2, 
-                     'model__min_samples_split': 2}
+        # self.best = {'model__bootstrap': False, 
+        #              'model__criterion': 'squared_error', 
+        #              'model__max_depth': 20, 
+        #              'model__max_features': 0.6984621976195288, 
+        #              'model__min_samples_leaf': 2, 
+        #              'model__min_samples_split': 2}
     
     def hp_search(self,df):
         """
@@ -87,11 +88,14 @@ class SurrogateModel:
         :param df: the dataframe with performances
         :return: Does not return anything, but stores the trained model in self.model
         """
-        self.df = df
+        y = df['score']
         self.features = df.columns[:-1]
         self.label = df.columns[-1]
-        #self.model = self.model.set_params(**self.best)
-        self.model.fit(df[self.features],df[self.label])
+        df_encoded = self.encoder.transform(df)
+
+        self.df = df_encoded
+
+        self.model.fit(df_encoded[self.features],y)
 
     def predict(self, theta_new):
         """
@@ -103,21 +107,25 @@ class SurrogateModel:
         if isinstance(theta_new, list): # len(theta_new)>1:
             X = pd.DataFrame(theta_new,index=[x for x in range(len(theta_new))])
         elif isinstance(theta_new, ConfigSpace.Configuration):
-            X = pd.DataFrame([theta_new.get_dictionary()])
+            X = pd.DataFrame([dict(theta_new)])
         else:
             X = pd.DataFrame(theta_new)
         for col in self.features:
             if col not in X.columns:
                 X[col] = None
-                
-        return self.model.predict(X[self.features])
+        
+        # print(X)
+        T = self.encoder.transform(X)
+        # print("T: " , T)
+        
+        return self.model.predict(T[self.features])
 
 
-if __name__ == '__main__':
-    files = ['lcdb_configs.csv','config_performances_dataset-6.csv','config_performances_dataset-11.csv','config_performances_dataset-1457.csv']
-    data = pd.DataFrame()
-    for file in files:
-        data = pd.concat([data,pd.read_csv(file)])
-    config_space = ConfigSpace.ConfigurationSpace.from_json('./lcdb_config_space_knn.json')
-    sm = SurrogateModel(config_space)
-    sm.hp_search(data)
+# if __name__ == '__main__':
+#     files = ['lcdb_configs.csv','config_performances_dataset-6.csv','config_performances_dataset-11.csv','config_performances_dataset-1457.csv']
+#     data = pd.DataFrame()
+#     for file in files:
+#         data = pd.concat([data,pd.read_csv(file)])
+#     config_space = ConfigSpace.ConfigurationSpace.from_json('./lcdb_config_space_knn.json')
+#     sm = SurrogateModel(config_space)
+#     sm.hp_search(data)

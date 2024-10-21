@@ -54,6 +54,9 @@ class SuccessiveHalving():
             self.surrogate_model.fit(self.df.loc[self.df['anchor_size']==anchor])
             errors = {}
             for i,config in enumerate(self.configs):
+                # convert config to df with anchor size, for new logic of encoder
+                config = pd.DataFrame([dict(config)])
+                config["anchor_size"] = anchor
                 if i not in self.in_race:
                     continue
                 error = self.surrogate_model.predict(config)[0]

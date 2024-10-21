@@ -34,7 +34,7 @@ class SuccessiveHalving():
         self.curves = {}
         self.df = df
         self.best_error = 1
-        self.anchors = []
+        self.anchors = [0]
         self.surrogate_model = SurrogateModel(config_space)
 
     def initialize(self,iterations = 7, halving_rate = 3):
@@ -52,16 +52,26 @@ class SuccessiveHalving():
             self.anchors.append(anchor)
             print(f'Anchor = {anchor}')
             self.surrogate_model.fit(self.df.loc[self.df['anchor_size']==anchor])
-            errors = []
+            errors = {}
             for i,config in enumerate(self.configs):
                 if i not in self.in_race:
                     continue
                 error = self.surrogate_model.predict(config)[0]
                 self.curves[i].append(error)
-                errors.append(error)
-            self.errors = np.array(errors)
-            self.in_race = np.argpartition(errors, len(errors)//self.halving_rate)[:len(errors)//self.halving_rate]
-            print(f'Best: {np.max(errors)}, in race: {len(self.in_race)}')
+                errors[i] = error
+            
+            error_to_keep = np.max(np.sort([error for error in errors.values()])[:len(errors)//self.halving_rate])
+            ind_to_keep = []
+            for i in range(len(self.configs)):
+                if i in self.in_race: 
+                    if errors[i]<= error_to_keep: 
+                        ind_to_keep.append(i)
+
+
+            #self.in_race = np.argpartition(errors, len(errors)//self.halving_rate)[:len(errors)//self.halving_rate]
+            self.in_race = ind_to_keep
+            print(f'Best: {np.min([err for err in errors.values()])}, in race: {len(self.in_race)}')
+            
 
 def main(args):
     config_space = ConfigSpace.ConfigurationSpace.from_json(args.config_space_file)

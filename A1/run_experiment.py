@@ -12,11 +12,11 @@ import numpy as np
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--config_space_file', type=str, default='lcdb_config_space_knn.json')
-    parser.add_argument('--configurations_performance_file', type=str, default='total_performances_dataset.csv')
+    parser.add_argument('--configurations_performance_file', type=str, default='config_performances_dataset-1457.csv')
     # max_anchor_size: connected to the configurations_performance_file. The max value upon which anchors are sampled
     parser.add_argument('--max_anchor_size', type=int, default=1600)
-    parser.add_argument('--num_iterations', type=int, default=50)
-
+    parser.add_argument('--num_iterations', type=int, default=100)
+ 
     return parser.parse_args()
 
 
@@ -50,14 +50,14 @@ def run(args):
     results_smbo = []
     results_random = []
     
-    thetas = config_space.sample_configuration(100)
+    thetas = config_space.sample_configuration(10)
     thetas_df = pd.DataFrame([dict(theta) for theta in thetas])
     thetas_df["anchor_size"] = args.max_anchor_size
     
     performances = surrogate_model.predict(thetas_df)
     capital_phi = list(zip(thetas_df.to_dict('records'), performances))
     # print("performances on thetas: \n", performances)
-    smbo.initialize(capital_phi)
+    smbo.initialize(capital_phi) 
 
     for idx in range(args.num_iterations):
         # smbo

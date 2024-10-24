@@ -30,10 +30,11 @@ class SequentialModelBasedOptimization(object):
         self.encoder = ConfigEncoder(self.config_space)
         
         self.model = Pipeline([
-            ('model', GaussianProcessRegressor(kernel=Matern(), random_state=42
+            ('model', GaussianProcessRegressor(kernel=Matern(), random_state=42, alpha=1e-6  # , n_restarts_optimizer=10
 
             ))
         ])
+
         
     def initialize(self, capital_phi: typing.List[typing.Tuple[typing.Dict, float]]) -> None:
         """
@@ -82,7 +83,7 @@ class SequentialModelBasedOptimization(object):
             return self.config_space.sample_configuration(1)
         
         self.fit_model()
-        sample_configs = self.config_space.sample_configuration(10000)
+        sample_configs = self.config_space.sample_configuration(5000)
         df = pd.DataFrame(sample_configs)
         df['anchor_size'] = self.max_anchor_size
         df_encoded = self.encoder.transform(df) 
@@ -106,6 +107,7 @@ class SequentialModelBasedOptimization(object):
         """
         
         mu, sigma = model_pipeline.predict(theta, return_std = True)
+        mu = np.maximum(mu, 0)
         sigma = np.maximum(sigma, 1e-9)
         z = (f_star - mu) / sigma
         cdf = norm.cdf(z)

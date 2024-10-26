@@ -1,15 +1,11 @@
 
 
-from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import OneHotEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.metrics import r2_score
 from sklearn.pipeline import Pipeline
 import numpy as np
 import pandas as pd
-from skopt import BayesSearchCV
-from skopt.space import Real, Categorical, Integer
 import ConfigSpace
 from config_encoder import ConfigEncoder
 
@@ -20,65 +16,7 @@ class SurrogateModel:
         self.df = None
         self.encoder = ConfigEncoder(self.config_space)
         self.model = Pipeline([
-            # ('encoder',self.encoder),
-                            #    ('imputer', SimpleImputer(missing_values=np.nan, strategy='mean')), 
                                ('model', RandomForestRegressor())])  
-        # data = pd.read_csv('lcdb_configs.csv')
-        # self.best = {}
-        # self.hp_search(data)
-        
-        # self.best = {'model__bootstrap': False, 
-        #              'model__criterion': 'squared_error', 
-        #              'model__max_depth': 20, 
-        #              'model__max_features': 0.6984621976195288, 
-        #              'model__min_samples_leaf': 2, 
-        #              'model__min_samples_split': 2}
-    
-    def hp_search(self,df):
-        """
-        Receives a data frame, in which each column (except for the last two) represents a hyperparameter, the
-        penultimate column represents the anchor size, and the final column represents the performance.
-
-        :param df: the dataframe with performances
-        :return: Does not return anything, but stores the trained model in self.model
-        """ 
-        self.df = df 
-        features = df.columns[:-1]
-        label = df.columns[-1]
-        # Split data
-        X_train, X_test, y_train, y_test = train_test_split(df[features],df[label],test_size=0.2)
-
-        # Define random forest search space
-        search_space  = {
-                'model__criterion': Categorical(['squared_error', 'absolute_error', 'friedman_mse', 'poisson']),
-                'model__n_estimators': Integer(10,1000),
-                'model__max_depth': Integer(10,50),
-                'model__min_samples_split': Integer(2,30),
-                'model__min_samples_leaf': Integer(1,30),
-                'model__max_features':Real(0.1,1),
-                'model__bootstrap':Categorical([True,False]),
-            }
-
-        # Optimize hyper params
-        opt = BayesSearchCV(
-        estimator=self.model,
-        search_spaces=search_space,
-        n_iter=32,              # Number of iterations
-        scoring='r2',     # You can change this to other metrics if needed
-        cv=5,               # 5-fold cross-validation
-        n_jobs = 15,
-        n_points=3,
-        verbose=1
-        )
-        opt.fit(X_train,y_train)
-        y_pred = opt.predict(X_test)
-        self.best = opt.best_params_
-        print("Best Score:", opt.best_score_)
-        print(f'R2: {r2_score(y_test,y_pred)},mse: {mean_squared_error(y_test,y_pred)}')
-        print("Best params:")
-        print(opt.best_params_)
-        
-
 
     def fit(self, df):
         """
@@ -92,9 +30,7 @@ class SurrogateModel:
         self.features = df.columns[:-1]
         self.label = df.columns[-1]
         df_encoded = self.encoder.transform(df)
-
         self.df = df_encoded
-
         self.model.fit(df_encoded[self.features],y)
 
     def predict(self, theta_new):
@@ -113,19 +49,5 @@ class SurrogateModel:
         for col in self.features:
             if col not in X.columns:
                 X[col] = None
-        
-        # print(X)
         T = self.encoder.transform(X)
-        # print("T: " , T)
-        
         return self.model.predict(T[self.features])
-
-
-# if __name__ == '__main__':
-#     files = ['lcdb_configs.csv','config_performances_dataset-6.csv','config_performances_dataset-11.csv','config_performances_dataset-1457.csv']
-#     data = pd.DataFrame()
-#     for file in files:
-#         data = pd.concat([data,pd.read_csv(file)])
-#     config_space = ConfigSpace.ConfigurationSpace.from_json('./lcdb_config_space_knn.json')
-#     sm = SurrogateModel(config_space)
-#     sm.hp_search(data)

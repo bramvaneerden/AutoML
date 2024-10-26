@@ -18,9 +18,9 @@ def parse_args():
 def plot_halving_curves(curves,anchors):
     for i,curve in curves.items():
         plt.plot(anchors[:len(curve)],curve)
-    plt.title('SuccessiveHalving')
-    plt.xlabel('data size')
-    plt.ylabel('error')
+    plt.title('Successive Halving')
+    plt.xlabel('Data Size')
+    plt.ylabel('Performance')
     plt.savefig('halving.png')
     plt.show()
 
@@ -48,10 +48,12 @@ class SuccessiveHalving():
     def run(self):
         start = 16
         for step in range(self.iterations):
-            anchor = 16*(2**(step+1))
+            anchor = start*(2**(step+1))
             self.anchors.append(anchor)
+            if anchor > self.df.anchor_size.max():
+                continue
             print(f'Anchor = {anchor}')
-            self.surrogate_model.fit(self.df.loc[self.df['anchor_size']==anchor])
+            self.surrogate_model.fit(self.df.loc[(self.df['anchor_size']>anchor/2)&(self.df['anchor_size']<(2*anchor))])
             errors = {}
             for i,config in enumerate(self.configs):
                 # convert config to df with anchor size, for new logic of encoder
@@ -72,17 +74,55 @@ class SuccessiveHalving():
 
 
             #self.in_race = np.argpartition(errors, len(errors)//self.halving_rate)[:len(errors)//self.halving_rate]
-            self.in_race = ind_to_keep
+            self.in_race = ind_to_keep[:len(errors)//self.halving_rate]
             print(f'Best: {np.min([err for err in errors.values()])}, in race: {len(self.in_race)}')
             
 
 def main(args):
     config_space = ConfigSpace.ConfigurationSpace.from_json(args.config_space_file)
     df = pd.read_csv(args.configurations_performance_file)
+    # Demonstrate successful halving
     halving = SuccessiveHalving(config_space,df)
     halving.initialize(iterations = 7, halving_rate = 3)
     halving.run()
     plot_halving_curves(halving.curves,halving.anchors)
+
+    # Compare halfing results per dataset
+    dfs = []
+    data_files = ['config_performances_dataset-6.csv','config_performances_dataset-11.csv',
+                  'config_performances_dataset-1457.csv','lcdb_configs.csv'] 
+    for file in data_files:
+        dfs.append(pd.read_csv(f'{file}'))
+
+    colors = ['tab:blue','tab:orange','tab:green','tab:red']
+    labels = ['dataset-6','dataset-11','dataset-1457','lcdb-configs']
+
+    curves = {}
+    anchors = {}
+    for name,df in zip(labels,dfs):
+        halving = SuccessiveHalving(config_space,df)
+        print(name, 'available anchors:', df.anchor_size.min(),df.anchor_size.max())
+        halving.initialize(iterations = 7, halving_rate = 3)
+        halving.run()
+        curves[name] = halving.curves
+        anchors[name] = halving.anchors 
+    for name,color,df in zip(labels,colors,dfs):
+        for i,curve in curves[name].items():
+            if i==0:
+                plt.plot(anchors[name][:len(curve)],curve,color=color, label = f'halving for {name}')
+            else:
+                plt.plot(anchors[name][:len(curve)],curve,color=color)
+        if name == 'dataset-6':
+            plt.axhline(y = df['score'].min(), color = color,linestyle=':',label='best score in dataset') 
+        else:
+            plt.axhline(y = df['score'].min(), color = color, linestyle = ':') 
+    plt.title('Successive Halving comparison per dataset')
+    plt.xlabel('Data Size')
+    plt.ylabel('Performance')
+    plt.legend()
+    plt.grid(True)
+    plt.savefig('halving_compared.png')
+    plt.show()
 
 if __name__ == '__main__':
     main(parse_args())

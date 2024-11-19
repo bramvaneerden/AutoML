@@ -6,11 +6,8 @@ from sklearn.pipeline import Pipeline
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import Matern
 
-from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import OneHotEncoder
 from scipy.stats import norm
 import pandas as pd
-import matplotlib.pyplot as plt
 from config_encoder import ConfigEncoder
 
 class SequentialModelBasedOptimization(object):
@@ -67,7 +64,7 @@ class SequentialModelBasedOptimization(object):
         y = np.array(results, dtype=object)
         self.model.fit(X, y)
         
-    def select_configuration(self, idx) -> ConfigSpace.Configuration:
+    def select_configuration(self, idx: int) -> ConfigSpace.Configuration:
         """
         Determines which configurations are good, based on the internal surrogate model.
         Note that we are minimizing the error, but the expected improvement takes into account that.

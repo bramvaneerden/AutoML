@@ -1,24 +1,22 @@
-
-
-from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import r2_score
 from sklearn.pipeline import Pipeline
-import numpy as np
 import pandas as pd
 import ConfigSpace
 from config_encoder import ConfigEncoder
 
 class SurrogateModel:
-
-    def __init__(self, config_space):
+    """ Class to train a random forest regressor on a dataframe with hyperparameter configurations and 
+    their resulting score as the last column. Once fitted the regressor can receive configurations in either
+    a list (for multiple configuration), as a ConfigSpace configuration or as a dictionary for predictions.
+    """    
+    def __init__(self, config_space:str):
         self.config_space = config_space
         self.df = None
         self.encoder = ConfigEncoder(self.config_space)
         self.model = Pipeline([
                                ('model', RandomForestRegressor())])  
 
-    def fit(self, df):
+    def fit(self, df:pd.DataFrame):
         """
         Receives a data frame, in which each column (except for the last two) represents a hyperparameter, the
         penultimate column represents the anchor size, and the final column represents the performance.
@@ -33,7 +31,7 @@ class SurrogateModel:
         self.df = df_encoded
         self.model.fit(df_encoded[self.features],y)
 
-    def predict(self, theta_new):
+    def predict(self, theta_new: ConfigSpace.Configuration | list | dict):
         """
         Predicts the performance of a given configuration theta_new
 

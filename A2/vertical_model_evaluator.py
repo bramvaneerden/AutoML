@@ -11,7 +11,9 @@ class VerticalModelEvaluator(ABC):
         """
         Initialises the vertical model evaluator. Take note of what the arguments are
         
-        :param surrogate_model: A sklearn pipeline object, which has already been fitted on LCDB data. You can use the predict model to predict for a numpy array (consisting of configuration information and an anchor size) what the performance of that configuration is. 
+        :param surrogate_model: A sklearn pipeline object, which has already been fitted on LCDB data. 
+                You can use the predict model to predict for a numpy array (consisting of configuration 
+                information and an anchor size) what the performance of that configuration is. 
         :param minimal_anchor: Smallest anchor to be used
         :param final_anchor: Largest anchor to be used
         """
@@ -20,4 +22,12 @@ class VerticalModelEvaluator(ABC):
         self.final_anchor = final_anchor
 
     def evaluate_model(self, best_so_far: float, configuration: typing.Dict) -> typing.List[float]:
-        raise NotImplemented()
+        anchor = self.minimal_anchor
+        learning_curve = []
+        while anchor < self.final_anchor:
+            configuration['anchor'] = anchor 
+            expected_performance = self.pipeline(configuration)
+            learning_curve.append((anchor,expected_performance))
+            anchor=anchor**2
+        return learning_curve
+

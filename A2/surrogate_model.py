@@ -7,7 +7,7 @@ from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.pipeline import Pipeline
 import pandas as pd
 from config_encoder import ConfigEncoder
-
+ 
 
 class SurrogateModel:
     """ Class to train a random forest regressor on a dataframe with hyperparameter configurations and 

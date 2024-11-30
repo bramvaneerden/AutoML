@@ -36,7 +36,7 @@ class SurrogateModel:
         self.df = df_encoded
         self.model.fit(df_encoded[self.features],y)
 
-    def predict(self, theta_new: ConfigSpace.Configuration | list | dict):
+    def predict(self, theta_new):
         """
         Predicts the performance of a given configuration theta_new
 
@@ -53,4 +53,5 @@ class SurrogateModel:
             if col not in X.columns:
                 X[col] = None
         T = self.encoder.transform(X)
+        # print(T)
         return self.model.predict(T[self.features])

@@ -1,7 +1,7 @@
 import ConfigSpace
 from sklearn.base import BaseEstimator, TransformerMixin
 import pandas as pd
-pd.set_option('future.no_silent_downcasting', True)
+# pd.set_option('future.no_silent_downcasting', True)
 
 '''
 The class implements the instance methods fit() and transform(). 

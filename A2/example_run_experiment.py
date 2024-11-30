@@ -5,15 +5,15 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from lccv import LCCV
 from surrogate_model import SurrogateModel
-
-
+import numpy as np
+np.random.seed(42)
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--config_space_file', type=str, default='lcdb_config_space_knn.json')
     parser.add_argument('--configurations_performance_file', type=str, default='config_performances_dataset-6.csv')
     # max_anchor_size: connected to the configurations_performance_file. The max value upon which anchors are sampled
-    parser.add_argument('--minimal_anchor', type=int, default=256)
-    parser.add_argument('--max_anchor_size', type=int, default=16000)
+    parser.add_argument('--minimal_anchor', type=int, default=16)
+    parser.add_argument('--max_anchor_size', type=int, default=8192)
     parser.add_argument('--num_iterations', type=int, default=50)
 
     return parser.parse_args()

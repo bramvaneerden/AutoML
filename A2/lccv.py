@@ -71,9 +71,11 @@ class LCCV(VerticalModelEvaluator):
             
             if len(results) >= 2: 
                 extrapolated = self.optimistic_extrapolation(results[-2][0], results[-2][1], #  previous_anchor: int, previous_performance: float, 
-                                                             results[-1][0], results[-1][0], # current_anchor: int, current_performance: float,
+                                                             results[-1][0], results[-1][1], # current_anchor: int, current_performance: float,
                                                              self.final_anchor)
+                print (f"extrapolated {extrapolated}, best_so_far { best_so_far}")
                 if extrapolated > best_so_far:
+                    print ( "breaking")
                     break
                 
         return results

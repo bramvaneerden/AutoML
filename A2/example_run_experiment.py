@@ -4,6 +4,7 @@ import logging
 import matplotlib.pyplot as plt
 import pandas as pd
 from lccv import LCCV
+from ipl import IPL
 from surrogate_model import SurrogateModel
 import numpy as np
 np.random.seed(42)
@@ -24,12 +25,12 @@ def run(args):
     df = pd.read_csv(args.configurations_performance_file)
     surrogate_model = SurrogateModel(config_space)
     surrogate_model.fit(df)
-    lccv = LCCV(surrogate_model, args.minimal_anchor, args.max_anchor_size)
+    lccv = IPL(surrogate_model, args.minimal_anchor, args.max_anchor_size)
     best_so_far = None
     
     for idx in range(args.num_iterations):
         theta_new = dict(config_space.sample_configuration())
-        result = lccv.evaluate_model(best_so_far, theta_new)
+        result = LCCV.evaluate_model(best_so_far, theta_new)
         final_result = result[-1][1]
         if best_so_far is None or final_result < best_so_far:
             best_so_far = final_result

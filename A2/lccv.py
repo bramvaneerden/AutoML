@@ -47,7 +47,10 @@ class LCCV(VerticalModelEvaluator):
         the tuple consists of two elements: the anchor size and the estimated
         performance.
         """
-        encoder = ConfigEncoder(self.surrogate_model.config_space)
+        df =  self.surrogate_model.df
+        anchor_steps = sorted(df['anchor_size'].unique())
+        # print(anchor_steps[0])
+        # encoder = ConfigEncoder(self.surrogate_model.config_space)
         if best_so_far == None:
             # anchor = self.final_anchor
             configuration["anchor_size"] = self.final_anchor
@@ -55,19 +58,21 @@ class LCCV(VerticalModelEvaluator):
             result = self.surrogate_model.predict(config)[0]
             return [(self.final_anchor, result)]
         
-        anchor = self.minimal_anchor
+        # anchor = self.minimal_anchor
         # anchors = []
         # performances = []
         results = []
-        while anchor <= self.final_anchor:
+        anchor_idx = 0
+        while anchor_steps[anchor_idx] < self.final_anchor:
             
-            configuration["anchor_size"] = anchor
+            print(anchor_steps[anchor_idx])
+            configuration["anchor_size"] = anchor_steps[anchor_idx]
             config = pd.DataFrame([dict(configuration)])
             performance = self.surrogate_model.predict(config)[0]
             
             # anchors.append(anchor)
-            results.append((anchor, performance))
-            anchor  *= 2
+            results.append((anchor_steps[anchor_idx], performance))
+            anchor_idx += 1
             
             
             if len(results) >= 2: 

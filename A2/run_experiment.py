@@ -8,6 +8,7 @@ from ipl import IPL
 from surrogate_model import SurrogateModel
 import numpy as np
 import pickle
+from itertools import product
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -24,7 +25,7 @@ def count_evalutions(eval_dict):
         evaluations+=anchor*evals
     return evaluations
 
-def experiment(vertical_eval,iterations,config_space):
+def experiment(vertical_eval,iterations,config_space,name):
     evaluations_dict = {anchor:0 for anchor in vertical_eval.anchors}
     best_so_far = None
     
@@ -37,48 +38,69 @@ def experiment(vertical_eval,iterations,config_space):
         x_values = [i[0] for i in result]
         y_values = [i[1] for i in result]
         plt.plot(x_values, y_values, "-o")
-    plt.savefig(f'{vertical_eval.method}_{iterations}.png')
+    plt.title(f'{name} {vertical_eval.method}')
+    plt.ylabel('error')
+    plt.xlabel('anchor')
+    plt.savefig(f'{name}_{vertical_eval.method}_{iterations}.png')
+    plt.close()
     evalutations = count_evalutions(evaluations_dict)
     return evalutations,best_so_far
 
 
-def run(args):
-    config_space = ConfigSpace.ConfigurationSpace.from_json(args.config_space_file)
-    df = pd.read_csv(args.configurations_performance_file)
+def run(config_space,data_file,nr_iterations,nr_experiments):
+    name = data_file.split('_')[-1][:-4]
+    df = pd.read_csv(data_file)
     surrogate_model = SurrogateModel(config_space)
     surrogate_model.fit(df)
     anchors = sorted(df['anchor_size'].unique())
-    
+    print('surrogate model fitted')
+
     # LCCV
     vertical_eval = LCCV(surrogate_model, anchors)
     lccv_eval = []
     lccv_best = []
-    for _ in range(10):
-        evalutations,best_score = experiment(vertical_eval,args.num_iterations,config_space)
+    for _ in range(nr_experiments):
+        evalutations,best_score = experiment(vertical_eval,nr_iterations,config_space,name)
         lccv_eval.append(evalutations)
         lccv_best.append(best_score)
-
+    print('LCCV done')
     # IPL
     ipl_eval = []
     ipl_best = []
     vertical_eval = IPL(surrogate_model, anchors)
-    for _ in range(10):
-        evalutations,best_score = experiment(vertical_eval,args.num_iterations,config_space)
+    for i in range(nr_experiments):
+        evalutations,best_score = experiment(vertical_eval,nr_iterations,config_space,name)
         ipl_eval.append(evalutations)
         ipl_best.append(best_score)
+    print('IPL done')
+    
+    # Gather results
     lccv_eval = np.array(lccv_eval)/anchors[-1]
     ipl_eval = np.array(ipl_eval)/anchors[-1]
-    print(args.configurations_performance_file)
-    print(f'LCCV score: {np.mean(lccv_best):.2f} std {np.std(lccv_best):.3f}')
-    print(f'LCCV evals: {np.mean(lccv_eval):.2f} std {np.std(lccv_eval):.3f}')
-    print(f'IPL score: {np.mean(ipl_best):.2f} std {np.std(ipl_best):.3f}')
-    print(f'IPL evals: {np.mean(ipl_eval):.2f} std {np.std(ipl_eval):.3f}')
-    
-    
+    return {('LCCV','score'):f'{np.mean(lccv_best):.2f} std {np.std(lccv_best):.3f}',
+            ('LCCV','evaluations'):f'{np.mean(lccv_eval):.2f} std {np.std(lccv_eval):.3f}',
+            ('IPL','score'):f' {np.mean(ipl_best):.2f} std {np.std(ipl_best):.3f}',
+            ('IPL','evaluations'):f'{np.mean(ipl_eval):.2f} std {np.std(ipl_eval):.3f}'}   
 
 
 if __name__ == '__main__':
     root = logging.getLogger()
     root.setLevel(logging.INFO)
+  
+    config_space = ConfigSpace.ConfigurationSpace.from_json('lcdb_config_space_knn.json')
+    data_files = ['config_performances_dataset-6.csv',
+                  'config_performances_dataset-11.csv',
+                  'config_performances_dataset-1457.csv']
+    nr_iterations = 100
+    nr_experiments = 20
+    tuples = [(a,b) for a,b in product(['LCCV','IPL'],['score','evaluations'])]
+    index = pd.MultiIndex.from_tuples(tuples,names=['method','score'])
+    columns=[data_file.split('_')[-1][:-4] for data_file in data_files]
+    result_df = pd.DataFrame(columns=columns ,index=index)
 
-    run(parse_args())
+    for data_file,name in zip(data_files,columns):
+        print(name)
+        result = run(config_space,data_file,nr_iterations,nr_experiments)
+        result_df[name] = result 
+        result_df.to_csv('comparison_results.csv')
+

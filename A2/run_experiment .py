@@ -7,7 +7,6 @@ from lccv import LCCV
 from ipl import IPL
 from surrogate_model import SurrogateModel
 import numpy as np
-import pickle
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -25,14 +24,12 @@ def run(args):
     surrogate_model = SurrogateModel(config_space)
     surrogate_model.fit(df)
     anchors = sorted(df['anchor_size'].unique())
-    evaluations_dict = {anchor:0 for anchor in anchors}
-    termination_dict = {anchor:0 for anchor in anchors}
     lccv = LCCV(surrogate_model, anchors)
     best_so_far = None
     
-    for _ in range(args.num_iterations):
+    for idx in range(args.num_iterations):
         theta_new = dict(config_space.sample_configuration())
-        result,evaluations_dict, termination_dict = lccv.evaluate_model(best_so_far, theta_new,evaluations_dict, termination_dict)
+        result = lccv.evaluate_model(best_so_far, theta_new)
         final_result = result[-1][1]
         if best_so_far is None or final_result < best_so_far:
             best_so_far = final_result
@@ -40,8 +37,6 @@ def run(args):
         y_values = [i[1] for i in result]
         plt.plot(x_values, y_values, "-o")
 
-    with open('result_dicts.pk','wb') as f:
-        pickle.dump((evaluations_dict, termination_dict),f)
     plt.show()
 
 

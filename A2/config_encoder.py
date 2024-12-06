@@ -1,7 +1,7 @@
 import ConfigSpace
 from sklearn.base import BaseEstimator, TransformerMixin
 import pandas as pd
-# pd.set_option('future.no_silent_downcasting', True)
+pd.set_option('future.no_silent_downcasting', True)
 
 '''
 The class implements the instance methods fit() and transform(). 
@@ -33,14 +33,13 @@ class ConfigEncoder(BaseEstimator, TransformerMixin):
     def transform(self, df):
         df = df.copy()
         
-        for param in self.config_space.get_hyperparameters():
+        for param in self.config_space.values():
             # either the column doesnt exist -> add and fill with default
             if param.name not in df.columns:
                 df[param.name] = param.default_value
             # or it does, but there are missing values -> fill with defaults
             else:
                 df[param.name] = df[param.name].fillna(param.default_value)
-        
         for column in df.columns:
             if column in self.categories:
                 df[column] = df[column].map(self.categories[column])        

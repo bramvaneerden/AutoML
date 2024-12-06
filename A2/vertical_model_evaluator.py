@@ -7,7 +7,7 @@ import typing
 
 class VerticalModelEvaluator(ABC):
 
-    def __init__(self, surrogate_model: Pipeline, minimal_anchor: int, final_anchor: int) -> None:
+    def __init__(self, surrogate_model: Pipeline, anchors: list) -> None:
         """
         Initialises the vertical model evaluator. Take note of what the arguments are
         
@@ -18,16 +18,17 @@ class VerticalModelEvaluator(ABC):
         :param final_anchor: Largest anchor to be used
         """
         self.surrogate_model = surrogate_model
-        self.minimal_anchor = minimal_anchor
-        self.final_anchor = final_anchor
+        self.anchors = anchors
+        self.minimal_anchor = anchors[0]
+        self.final_anchor = anchors[-1]
 
     def evaluate_model(self, best_so_far: float, configuration: typing.Dict) -> typing.List[float]:
         anchor = self.minimal_anchor
         learning_curve = []
-        while anchor < self.final_anchor:
-            configuration['anchor'] = anchor 
+        for anchor in self.anchors:
+            configuration['anchor_size'] = anchor 
             expected_performance = self.pipeline(configuration)
             learning_curve.append((anchor,expected_performance))
-            anchor=anchor**2
+
         return learning_curve
 

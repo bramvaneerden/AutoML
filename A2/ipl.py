@@ -13,10 +13,7 @@ class IPL(VerticalModelEvaluator):
     def extrapolation(results, target_anchor: int
     ) -> float:
         """
-        Does the optimistic performance. Since we are working with a simplified
-        surrogate model, we can not measure the infimum and supremum of the
-        distribution. Just calculate the slope between the points, and
-        extrapolate this.
+        Does the performance extrapolation.
 
         :param previous_anchor: See name
         :param previous_performance: Performance at previous anchor
@@ -32,7 +29,7 @@ class IPL(VerticalModelEvaluator):
         X_values = np.array([x for x,_ in results])
         y_values = np.array([y for _,y in results])
         target_func = func_powerlaw
-        popt, pcov = curve_fit(target_func, X_values, y_values,maxfev=5000)
+        popt, pcov = curve_fit(target_func, X_values, y_values,maxfev=1000000)
         extrapolated = target_func(target_anchor, *popt)
         return extrapolated
     
@@ -54,26 +51,16 @@ class IPL(VerticalModelEvaluator):
         """
         encoder = ConfigEncoder(self.surrogate_model.config_space)
         if best_so_far == None:
-            # anchor = self.final_anchor
             configuration["anchor_size"] = self.final_anchor
             config = pd.DataFrame([dict(configuration)])
             result = self.surrogate_model.predict(config)[0]
             return [(self.final_anchor, result)]
-        
-        anchor = self.minimal_anchor
-        # anchors = []
-        # performances = []
         results = []
-        while anchor <= self.final_anchor:
-            
+        for anchor in self.anchors: 
             configuration["anchor_size"] = anchor
             config = pd.DataFrame([dict(configuration)])
             performance = self.surrogate_model.predict(config)[0]
-            
-            # anchors.append(anchor)
             results.append((anchor, performance))
-            anchor  *= 2
-            
             
             if len(results) >= 3: 
                 extrapolated = self.extrapolation(results, self.final_anchor)

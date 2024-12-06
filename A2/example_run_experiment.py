@@ -14,7 +14,7 @@ def parse_args():
     parser.add_argument('--config_space_file', type=str, default='lcdb_config_space_knn.json')
     parser.add_argument('--configurations_performance_file', type=str, default='config_performances_dataset-6.csv')
     # max_anchor_size: connected to the configurations_performance_file. The max value upon which anchors are sampled
-    parser.add_argument('--num_iterations', type=int, default=100)
+    parser.add_argument('--num_iterations', type=int, default=10)
 
     return parser.parse_args()
 
@@ -26,13 +26,12 @@ def run(args):
     surrogate_model.fit(df)
     anchors = sorted(df['anchor_size'].unique())
     evaluations_dict = {anchor:0 for anchor in anchors}
-    termination_dict = {anchor:0 for anchor in anchors}
-    lccv = LCCV(surrogate_model, anchors)
+    lccv = IPL(surrogate_model, anchors)
     best_so_far = None
     
     for _ in range(args.num_iterations):
         theta_new = dict(config_space.sample_configuration())
-        result,evaluations_dict, termination_dict = lccv.evaluate_model(best_so_far, theta_new,evaluations_dict, termination_dict)
+        result,evaluations_dict = lccv.evaluate_model(best_so_far, theta_new,evaluations_dict)
         final_result = result[-1][1]
         if best_so_far is None or final_result < best_so_far:
             best_so_far = final_result
@@ -40,8 +39,9 @@ def run(args):
         y_values = [i[1] for i in result]
         plt.plot(x_values, y_values, "-o")
 
-    with open('result_dicts.pk','wb') as f:
-        pickle.dump((evaluations_dict, termination_dict),f)
+    print(evaluations_dict)
+    #with open('result_dicts.pk','wb') as f:
+    #    pickle.dump((evaluations_dict, termination_dict),f)
     plt.show()
 
 

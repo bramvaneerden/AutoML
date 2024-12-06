@@ -33,7 +33,7 @@ class IPL(VerticalModelEvaluator):
         extrapolated = target_func(target_anchor, *popt)
         return extrapolated
     
-    def evaluate_model(self, best_so_far: typing.Optional[float], configuration: typing.Dict) -> typing.List[typing.Tuple[int, float]]:
+    def evaluate_model(self, best_so_far: typing.Optional[float], configuration: typing.Dict,evaluations_dict: typing.Dict) -> typing.List[typing.Tuple[int, float]]:
         """
         Does a staged evaluation of the model, on increasing anchor sizes.
         Determines after the evaluation at every anchor an optimistic
@@ -49,16 +49,19 @@ class IPL(VerticalModelEvaluator):
         the tuple consists of two elements: the anchor size and the estimated
         performance.
         """
-        encoder = ConfigEncoder(self.surrogate_model.config_space)
+        self.method = 'IPL'
+        #encoder = ConfigEncoder(self.surrogate_model.config_space)
         if best_so_far == None:
             configuration["anchor_size"] = self.final_anchor
+            evaluations_dict[self.final_anchor]+=1
             config = pd.DataFrame([dict(configuration)])
             result = self.surrogate_model.predict(config)[0]
-            return [(self.final_anchor, result)]
+            return [(self.final_anchor, result)],evaluations_dict
         results = []
         for anchor in self.anchors: 
             configuration["anchor_size"] = anchor
             config = pd.DataFrame([dict(configuration)])
+            evaluations_dict[anchor]+=1
             performance = self.surrogate_model.predict(config)[0]
             results.append((anchor, performance))
             
@@ -69,7 +72,7 @@ class IPL(VerticalModelEvaluator):
                     # print ( "breaking")
                     break
                 
-        return results
+        return results,evaluations_dict
 
         
             

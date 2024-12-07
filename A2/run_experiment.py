@@ -20,12 +20,30 @@ def parse_args():
     return parser.parse_args()
 
 def count_evalutions(eval_dict):
+    ''' Calculate total number of evaluations weighted by anchor size.
+    
+    param: eval_dict (dict): Dictionary mapping anchor sizes to number of evaluations
+    
+    return: int: Total weighted number of evaluations
+    '''
+    
     evaluations = 0
     for anchor,evals in eval_dict.items():
         evaluations+=anchor*evals
     return evaluations
 
 def experiment(vertical_eval,iterations,config_space,name):
+    '''
+    Run a single experiment with given vertical evaluator.
+    
+    param: vertical_eval: LCCV or IPL evaluator instance
+    param: iterations (int): number of configurations to evaluate
+    param: config_space: configSpace containing hyperparameter definitions
+    param: name (str): name of dataset for plot labeling
+    
+    return: tuple: (total_evaluations, best_score_found)
+    
+    '''
     evaluations_dict = {anchor:0 for anchor in vertical_eval.anchors}
     best_so_far = None
     
@@ -48,6 +66,9 @@ def experiment(vertical_eval,iterations,config_space,name):
 
 
 def run(config_space,data_file,nr_iterations,nr_experiments,min_anchor):
+    '''
+    Run complete experiment comparing LCCV and IPL methods.
+    '''
     name = data_file.split('_')[-1][:-4]
     df = pd.read_csv(data_file)
     surrogate_model = SurrogateModel(config_space)

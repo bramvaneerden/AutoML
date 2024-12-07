@@ -47,12 +47,12 @@ def experiment(vertical_eval,iterations,config_space,name):
     return evalutations,best_so_far
 
 
-def run(config_space,data_file,nr_iterations,nr_experiments):
+def run(config_space,data_file,nr_iterations,nr_experiments,min_anchor):
     name = data_file.split('_')[-1][:-4]
     df = pd.read_csv(data_file)
     surrogate_model = SurrogateModel(config_space)
     surrogate_model.fit(df)
-    anchors = sorted(df['anchor_size'].unique())
+    anchors = sorted(df.loc[df.anchor_size>=min_anchor,'anchor_size'].unique())
     print('surrogate model fitted')
 
     # LCCV
@@ -86,21 +86,25 @@ def run(config_space,data_file,nr_iterations,nr_experiments):
 if __name__ == '__main__':
     root = logging.getLogger()
     root.setLevel(logging.INFO)
-  
+    
     config_space = ConfigSpace.ConfigurationSpace.from_json('lcdb_config_space_knn.json')
     data_files = ['config_performances_dataset-6.csv',
                   'config_performances_dataset-11.csv',
                   'config_performances_dataset-1457.csv']
     nr_iterations = 100
     nr_experiments = 20
+    data_file_names = [data_file.split('_')[-1][:-4] for data_file in data_files]
+    min_anchor = {'dataset-6':16,
+                  'dataset-11':32,
+                  'dataset-1457':128}
     tuples = [(a,b) for a,b in product(['LCCV','IPL'],['score','evaluations'])]
     index = pd.MultiIndex.from_tuples(tuples,names=['method','score'])
-    columns=[data_file.split('_')[-1][:-4] for data_file in data_files]
+    columns = data_file_names
     result_df = pd.DataFrame(columns=columns ,index=index)
 
     for data_file,name in zip(data_files,columns):
         print(name)
-        result = run(config_space,data_file,nr_iterations,nr_experiments)
+        result = run(config_space,data_file,nr_iterations,nr_experiments,min_anchor[name])
         result_df[name] = result 
         result_df.to_csv('comparison_results.csv')
 

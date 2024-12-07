@@ -7,7 +7,6 @@ from lccv import LCCV
 from ipl import IPL
 from surrogate_model import SurrogateModel
 import numpy as np
-import pickle
 from itertools import product
 
 def parse_args():
